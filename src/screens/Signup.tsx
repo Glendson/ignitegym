@@ -7,6 +7,9 @@ import {
   VStack,
 } from "@gluestack-ui/themed";
 
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
+
 import { useForm, Controller } from "react-hook-form";
 
 import backgroundImg from "@assets/background.png";
@@ -23,12 +26,26 @@ type FormDataProps = {
   password_confirm: string;
 };
 
+const signUpSchema = yup.object({
+  name: yup.string().required("Nome é obrigatório."),
+  email: yup.string().email("E-mail inválido.").required("E-mail é obrigatório."),
+  password: yup
+    .string()
+    .min(6, "A senha deve ter pelo menos 6 caracteres.")
+    .required("Senha é obrigatória."),
+  password_confirm: yup
+    .string()
+    .oneOf([yup.ref("password"), null], "As senhas devem ser iguais.")
+    .required("Confirmação de senha é obrigatória."),
+});
+
 export function Signup() {
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<FormDataProps>({
+    resolver: yupResolver(signUpSchema),
     defaultValues: {
       name: "",
       email: "",
