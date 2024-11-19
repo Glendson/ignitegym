@@ -4,7 +4,10 @@ import {
   Image,
   ScrollView,
   Text,
+  Toast,
+  ToastTitle,
   VStack,
+  useToast,
 } from "@gluestack-ui/themed";
 
 import * as yup from "yup";
@@ -18,6 +21,8 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorRoutesProps } from "../routes/auth.routes";
+import { api } from "../services/api";
+import { AppError } from "../utils/AppError";
 
 type FormDataProps = {
   name: string;
@@ -43,6 +48,8 @@ const signUpSchema = yup.object({
 });
 
 export function Signup() {
+  const toast = useToast();
+
   const {
     control,
     handleSubmit,
@@ -64,15 +71,24 @@ export function Signup() {
   }
 
   async function handleSignUp({ name, email, password }: FormDataProps) {
-    const response = await fetch("http://192.168.1.2:3333/users", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, password }),
-    });
-    const data = await response.json();
-    console.log(data);
+    try {
+      const response = await api.post(`/users`, { name, email, password });
+      console.log(response.data);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+      const title = isAppError
+        ? error.message
+        : "Não foi possivel criar a conta.";
+
+        toast.show({
+          placement: "top",
+          render: () => (
+            <Toast action="error" variant="outline">
+              <ToastTitle>{title}</ToastTitle>
+            </Toast>
+          ),
+        });
+    }
   }
 
   return (
