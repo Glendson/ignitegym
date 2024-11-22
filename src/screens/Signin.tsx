@@ -4,7 +4,10 @@ import {
   Image,
   ScrollView,
   Text,
+  Toast,
+  ToastTitle,
   VStack,
+  useToast,
 } from "@gluestack-ui/themed";
 
 import backgroundImg from "@assets/background.png";
@@ -13,12 +16,56 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorRoutesProps } from "../routes/auth.routes";
+import { useAuth } from "../hooks/useAuth";
+import { AppError } from "../utils/AppError";
+import { useForm } from "react-hook-form";
+import { useState } from "react";
+
+type FormData = {
+  email: string;
+  password: string;
+};
 
 export function Signin() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { signIn } = useAuth();
+
+  const toast = useToast();
+
   const navigation = useNavigation<AuthNavigatorRoutesProps>();
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>();
 
   function handleNewAccount() {
     navigation.navigate("signUp");
+  }
+
+  async function handleSignIn({ email, password }: FormData) {
+    try {
+      await signIn(email, password);
+      setIsLoading(true);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+
+      const title = isAppError
+        ? error.message
+        : "Não foi possivel entrar, tente novamente mais tarde.";
+
+      setIsLoading(false);
+      toast.show({
+        placement: "top",
+        render: () => (
+          <Toast action="error" variant="outline" bgColor="$red500">
+            <ToastTitle>{title}</ToastTitle>
+          </Toast>
+        ),
+      });
+    }
   }
 
   return (
@@ -56,7 +103,11 @@ export function Signin() {
             />
             <Input placeholder="Senha" secureTextEntry />
 
-            <Button title="Acessar" />
+            <Button
+              title="Acessar"
+              onPress={handleSubmit(handleSignIn)}
+              isLoading={isLoading}
+            />
           </Center>
 
           <Center flex={1} justifyContent="flex-end" mt="$4">

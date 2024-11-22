@@ -23,6 +23,8 @@ import { useNavigation } from "@react-navigation/native";
 import { AuthNavigatorRoutesProps } from "../routes/auth.routes";
 import { api } from "../services/api";
 import { AppError } from "../utils/AppError";
+import { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 
 type FormDataProps = {
   name: string;
@@ -48,6 +50,10 @@ const signUpSchema = yup.object({
 });
 
 export function Signup() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const { signIn } = useAuth();
+
   const toast = useToast();
 
   const {
@@ -72,22 +78,26 @@ export function Signup() {
 
   async function handleSignUp({ name, email, password }: FormDataProps) {
     try {
-      const response = await api.post(`/users`, { name, email, password });
-      console.log(response.data);
+      await api.post(`/users`, { name, email, password });
+
+      await signIn(name, password);
+
+      setIsLoading(true);
     } catch (error) {
+      setIsLoading(false);
       const isAppError = error instanceof AppError;
       const title = isAppError
         ? error.message
         : "Não foi possivel criar a conta.";
 
-        toast.show({
-          placement: "top",
-          render: () => (
-            <Toast action="error" variant="outline">
-              <ToastTitle>{title}</ToastTitle>
-            </Toast>
-          ),
-        });
+      toast.show({
+        placement: "top",
+        render: () => (
+          <Toast action="error" variant="outline">
+            <ToastTitle>{title}</ToastTitle>
+          </Toast>
+        ),
+      });
     }
   }
 
@@ -177,6 +187,7 @@ export function Signup() {
             <Button
               title="Criar e acessar"
               onPress={handleSubmit(handleSignUp)}
+              isLoading={isLoading}
             />
           </Center>
 
