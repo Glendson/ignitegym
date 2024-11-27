@@ -22,7 +22,7 @@ import { Loading } from "../components/Loading";
 export function Home() {
   const [isLoading, setIsloading] = useState(true);
   const [groups, setGroups] = useState<string[]>([]);
-  const [groupSelected, setGroupSelected] = useState("");
+  const [groupSelected, setGroupSelected] = useState("antebraço");
   const [exercises, setExercises] = useState<ExerciseDTO[]>([]);
 
   const toast = useToast();
