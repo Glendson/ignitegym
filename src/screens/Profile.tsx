@@ -13,24 +13,41 @@ import { Controller, useForm } from "react-hook-form";
 import { useAuth } from "../hooks/useAuth";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-
-type FormDataProps = {
-  name: string;
-  email: string;
-  password: string;
-  old_password: string;
-  confirm_password: string;
-};
+import { api } from "../services/api";
+import { AppError } from "../utils/AppError";
 
 const profileSchema = yup.object({
-  name: yup.string().required("Informe o nome."),
+  name: yup.string().required("Informe seu nome."),
+  email: yup.string().required("Informe seu email.").email("Email inválido"),
+  old_password: yup.string(),
+  password: yup
+    .string()
+    .min(6, "A senha deve ter pelo menos 6 dígitos")
+    .nullable()
+    .transform((value) => (!!value ? value : null)),
+  confirm_password: yup
+    .string()
+    .nullable()
+    .transform((value) => (!!value ? value : null))
+    .oneOf([yup.ref("password"), null], "A confirmação da senha está incorreta")
+    .when("password", {
+      is: (Field: any) => Field,
+      then: (schema) =>
+        schema
+          .nullable()
+          .required("Informe a confirmação da senha.")
+          .transform((value) => (!!value ? value : null)),
+    }),
 });
 
+type FormDataProps = yup.InferType<typeof profileSchema>;
+
 export function Profile() {
+  const [isLoading, setIsLoading] = useState(false);
   const [userPhoto, setUserPhoto] = useState("https://github.com/Glendson.png");
   const toast = useToast();
 
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
 
   const {
     control,
@@ -83,7 +100,48 @@ export function Profile() {
     }
   }
 
-  async function handleProfileUpdate(data: FormDataProps) {}
+  async function handleProfileUpdate(data: FormDataProps) {
+    try {
+      setIsLoading(true);
+
+      const userUpdated = user;
+
+      userUpdated.name = data.name;
+
+      await api.put(`/users`, data);
+      toast.show({
+        placement: "top",
+        render: ({ id }) => (
+          <ToastMessage
+            id={id}
+            action="success"
+            title="Perfil atualizado com sucesso!"
+            onClose={() => toast.close(id)}
+          />
+        ),
+      });
+
+      await updateUserProfile(userUpdated);
+    } catch (error) {
+      const isAppError = error instanceof AppError;
+      const title = isAppError
+        ? error.message
+        : "Não foi possivel atualizar o seu perfil.";
+      toast.show({
+        placement: "top",
+        render: ({ id }) => (
+          <ToastMessage
+            id={id}
+            action="error"
+            title={title}
+            onClose={() => toast.close(id)}
+          />
+        ),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   return (
     <VStack flex={1}>
@@ -110,7 +168,7 @@ export function Profile() {
               name="name"
               render={({ field: { value, onChange } }) => (
                 <Input
-                  placeholder="Nome"
+                  placeholder="name"
                   bg={"$gray600"}
                   onChangeText={onChange}
                   value={value}
@@ -188,6 +246,7 @@ export function Profile() {
             <Button
               title="Atualizar"
               onPress={handleSubmit(handleProfileUpdate)}
+              isLoading={isLoading}
             />
           </Center>
         </Center>
