@@ -16,6 +16,8 @@ import * as yup from "yup";
 import { api } from "../services/api";
 import { AppError } from "../utils/AppError";
 
+import defaultUserImage from "../assets/userPhotoDefault.png";
+
 const profileSchema = yup.object({
   name: yup.string().required("Informe seu nome."),
   email: yup.string().required("Informe seu email.").email("Email inválido"),
@@ -44,7 +46,6 @@ type FormDataProps = yup.InferType<typeof profileSchema>;
 
 export function Profile() {
   const [isLoading, setIsLoading] = useState(false);
-  const [userPhoto, setUserPhoto] = useState("https://github.com/Glendson.png");
   const toast = useToast();
 
   const { user, updateUserProfile } = useAuth();
@@ -93,7 +94,44 @@ export function Profile() {
             ),
           });
         }
-        setUserPhoto(photoUri);
+
+        const fileExtension = photoSelected.assets[0].uri.split(".").pop();
+
+        const photoFile = {
+          name: `${user.name}.${fileExtension}`.toLowerCase(),
+          uri: photoSelected.assets[0].uri,
+          type: `${photoSelected.assets[0].type}/${fileExtension}`,
+        } as any;
+
+        const userPhotoUploadForm = new FormData();
+        userPhotoUploadForm.append("avatar", photoFile);
+
+        const avatarUpdatedResponse = await api.patch(
+          "/users/avatar",
+          userPhotoUploadForm,
+          {
+            headers: {
+              "Content-type": "multipart/form-data",
+            },
+          }
+        );
+
+        const userUpdated = user;
+        userUpdated.avatar = avatarUpdatedResponse.data.avatar;
+        updateUserProfile(userUpdated);
+
+        toast.show({
+          placement: "top",
+          render: ({ id }) => (
+            <ToastMessage
+              id={id}
+              action="success"
+              title="Foto atualizada!"
+              description="Imagem alterada com sucesso."
+              onClose={() => toast.close(id)}
+            />
+          ),
+        });
       }
     } catch (error) {
       console.error("Error selecting photo", error);
@@ -149,7 +187,15 @@ export function Profile() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 36 }}>
         <Center mt={"$6"} px={"$10"}>
-          <UserPhoto source={{ uri: userPhoto }} alt="" size="xl" />
+          <UserPhoto
+            source={
+              user.avatar
+                ? { uri: `${api.defaults.baseURL}/avatar/${user.avatar}` }
+                : defaultUserImage
+            }
+            alt=""
+            size="xl"
+          />
           <TouchableOpacity onPress={handleUserPhotoSelect}>
             <Text
               color={"$green500"}
